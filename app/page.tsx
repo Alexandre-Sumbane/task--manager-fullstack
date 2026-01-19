@@ -1,3 +1,5 @@
+"use client";
+
 import {
   AlertDialog,
   AlertDialogAction,
@@ -11,13 +13,9 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { EditTasks } from "@/components/edit-tasks/edit-tasks";
+import { toast } from "sonner";
+
 import { Input } from "@/components/ui/input";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -25,19 +23,94 @@ import {
   List,
   Check,
   ArrowDownRight,
-  SquarePen,
   Trash,
   ListCheck,
   SigmaIcon,
 } from "lucide-react";
 
+import { useEffect, useState } from "react";
+
+type Task = {
+  id: string;
+  task: string;
+  done: boolean;
+};
+
+import { createTask, deleteTask, getTasks } from "@/src/service/tasks.service";
 export default function Home() {
+  const [listTasks, setListTasks] = useState<Task[]>([]);
+  const [task, setTask] = useState<string>("");
+
+  async function handleGetTasks() {
+    try {
+      const tasks = await getTasks();
+
+      if (!tasks) return;
+
+      setListTasks(tasks);
+
+      return tasks
+    } catch (error) {
+      toast.error("Erro ao buscar tarefas!");
+
+      throw error;
+    }
+  }
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    handleGetTasks();
+  }, []);
+
+  async function handleCreateTask() {
+    try {
+      if (task.length === 0 || !task) return;
+
+      await createTask(task);
+
+      setTask("");
+
+    toast.success("Tarefa criada com sucesso!");
+
+    await handleGetTasks();
+
+    } catch (error) {
+      
+      toast.error("Erro ao criar tarefa!");
+
+      throw error;
+    }
+  }
+
+  async function handleDeleteTask(id: string) {
+    try {
+
+      await deleteTask(id);
+
+      toast.warning("Tarefa deletada com sucesso!");
+
+      await handleGetTasks();
+    } catch (error) {
+      toast.error("Erro ao deletar tarefa!");
+      throw error;
+    }
+  }
+
   return (
     <main className="w-full h-screen bg-gray-100 flex justify-center items-center">
       <Card className="w-lg">
         <CardHeader className="flex gap-2">
-          <Input placeholder="Adicionar Tarefa" />
-          <Button className="cursor-pointer" variant="default">
+          <Input
+            placeholder="Adicionar Tarefa"
+            onChange={(e) => setTask(e.target.value)}
+
+            value={task}
+          />
+          <Button
+            className="cursor-pointer"
+            variant="default"
+            onClick={handleCreateTask}
+          >
             <Plus />
             Adicionar
           </Button>
@@ -59,29 +132,23 @@ export default function Home() {
             </Badge>
           </div>
           <div className="mt-4 border-b">
-            <div className="flex justify-between items-center  h-12 border-t">
-              <div className="w-1 h-full bg-green-300"></div>
-              <p className="flex-1 px-2 text-sm">Estudar React</p>
-              <div className="flex items-center gap-2">
-                <Dialog> 
-                  <DialogTrigger asChild>
-                    <SquarePen size={16} className="cursor-pointer" />
-                  </DialogTrigger>
-                  
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Editar Tarefa</DialogTitle>
-                    </DialogHeader>
-
-                    <div className="flex items-center gap-2">
-                      <Input placeholder="Editar Tarefa" />
-                      <Button className="cursor-pointer">Editar</Button>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-                <Trash size={16} className="cursor-pointer" />
+            {listTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex justify-between items-center h-12"
+              >
+                <div className="w-1 h-full bg-green-300"></div>
+                <p className="flex-1 px-2 text-sm">{task.task}</p>
+                <div className="flex items-center gap-2">
+                  <EditTasks task={task} />
+                  <Trash
+                    size={16}
+                    className="cursor-pointer"
+                    onClick={() => handleDeleteTask(task.id)}
+                  />
+                </div>
               </div>
-            </div>
+            ))}
           </div>
 
           <div className="flex justify-between mt-4">
